@@ -2,11 +2,25 @@
 
 import argparse  # Parse command-line options.
 import json  # Decode the response from Wikipedia's API.
+import os  # Configure Tcl/Tk resource paths when needed.
+import sys  # Locate the base Python installation.
 from collections.abc import Sequence  # Type the optional command-line arguments.
-from tkinter import Tk, TclError, messagebox  # Display the summary in a desktop dialog.
+from pathlib import Path  # Check for Tcl/Tk resource files.
+from tkinter import Tk, TclError, TclVersion, TkVersion, messagebox  # Display desktop dialogs.
 from urllib.error import URLError  # Identify network and HTTP request failures.
 from urllib.parse import urlencode  # Encode API parameters safely.
 from urllib.request import Request, urlopen  # Make the standard-library web request.
+
+
+def create_tk_root() -> Tk:  # Create a root window with Tcl/Tk resources configured.
+    """Create a Tk root, locating bundled Tcl/Tk files if automatic discovery fails."""
+    tcl_library = Path(sys.base_prefix, "tcl", f"tcl{TclVersion}")
+    tk_library = Path(sys.base_prefix, "tcl", f"tk{TkVersion}")
+    if not os.environ.get("TCL_LIBRARY") and (tcl_library / "init.tcl").is_file():
+        os.environ["TCL_LIBRARY"] = str(tcl_library)
+    if not os.environ.get("TK_LIBRARY") and (tk_library / "tk.tcl").is_file():
+        os.environ["TK_LIBRARY"] = str(tk_library)
+    return Tk()
 
 
 def build_parser() -> argparse.ArgumentParser:  # Define the command-line argument parser.
@@ -47,6 +61,8 @@ def fetch_wikipedia_summary(search_term: str) -> tuple[str, str] | None:  # Look
     with urlopen(request, timeout=10) as response:  # Fetch the API response with a time limit.
         data = json.loads(response.read().decode("utf-8"))  # Decode the response as JSON.
 
+    if not isinstance(data, dict):  # Check that the response root is a JSON object.
+        raise ValueError("Wikipedia returned an unexpected response.")  # Report malformed API data.
     query = data.get("query")  # Get the query section from the response.
     if not isinstance(query, dict):  # Check that the API returned the expected structure.
         raise ValueError("Wikipedia returned an unexpected response.")  # Report malformed API data.
@@ -57,6 +73,8 @@ def fetch_wikipedia_summary(search_term: str) -> tuple[str, str] | None:  # Look
         return None  # Tell the caller there is no summary to display.
 
     page = pages[0]  # Use the best matching article.
+    if not isinstance(page, dict):  # Check that the article entry is a JSON object.
+        raise ValueError("Wikipedia returned an incomplete article.")  # Report malformed article data.
     title = page.get("title")  # Read the article title.
     summary = page.get("extract", "").strip()  # Read and trim the introductory text.
     if not isinstance(title, str) or not isinstance(summary, str):  # Validate the article fields.
@@ -70,7 +88,7 @@ def show_message(title: str, message: str, is_error: bool = False) -> bool:  # D
     """Show an information or error dialog and report whether it was displayed."""  # Describe the function.
     window = None  # Keep a reference so the hidden root window can be closed.
     try:  # Handle systems where a desktop message box cannot be created.
-        window = Tk()  # Create the hidden Tkinter root window.
+        window = create_tk_root()  # Create the hidden Tkinter root window.
         window.withdraw()  # Hide the empty root window.
         if is_error:  # Choose the appropriate dialog style.
             messagebox.showerror(title, message, parent=window)  # Display an error dialog.

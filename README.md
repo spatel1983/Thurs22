@@ -1,9 +1,11 @@
 # Wikipedia Search Summary
 
-A small Python command-line program that looks up a word or phrase in Wikipedia
-and displays a short introductory summary in a desktop message box. It is
-intended as a beginner-friendly example of Python functions, command-line
-arguments, HTTP requests, JSON, error handling, and GitHub documentation.
+A small Python program that looks up a word or phrase in Wikipedia and displays
+a short introductory summary. Use the command-line version (`main.py`) for a
+message-box result, or the graphical version (`gui.py`) for a desktop window.
+The project is intended as a beginner-friendly example of Python functions,
+command-line arguments, HTTP requests, JSON, GUI programming, error handling,
+and GitHub documentation.
 
 > This program searches Wikipedia, not Google. It shows the best matching
 > Wikipedia article it receives; it does not search the whole web or generate
@@ -11,13 +13,13 @@ arguments, HTTP requests, JSON, error handling, and GitHub documentation.
 
 ## What it does
 
-1. Gets a search term from the command line, or prompts you to type one.
+1. Gets a search term from the command line or a text field in the GUI.
 2. Sends the term to the English Wikipedia API.
 3. Requests the introduction (up to three sentences) of the best matching
    article.
-4. Displays the article title and summary in a message box.
+4. Displays the article title and summary in a message box or GUI window.
 5. Shows a helpful message if there is no summary, the network request fails,
-   or a desktop dialog is unavailable.
+   or a desktop GUI is unavailable.
 
 An internet connection is needed to contact Wikipedia. The script uses only
 Python's standard library; there are no third-party Python packages to install.
@@ -49,7 +51,8 @@ cd Thurs22
 
 Then run a command below from that folder.
 
-Prompt for a search term:
+Run the command-line version, which prompts for a search term and displays the
+summary in a message box:
 
 ```text
 python main.py
@@ -67,14 +70,24 @@ On Windows, you can also use the Python launcher:
 py main.py "Python programming"
 ```
 
-The message box is modal: close it to finish the program. If a desktop message
-box cannot be created, the summary or error is printed in the terminal instead.
-An empty search term is rejected. The program exits with status `0` on success
-and `1` when it cannot complete the lookup or display a found summary.
+Run the graphical version:
+
+```text
+python gui.py
+```
+
+Enter a word or phrase in the window and click **Search** or press **Enter**.
+The GUI remains responsive while the lookup is in progress. The GUI version
+does not require a terminal prompt.
+
+An empty search term is rejected. The command-line version exits with status
+`0` on success and `1` when it cannot complete the lookup or display a found
+summary.
 
 ## How the code works
 
-All application code is in `main.py`.
+The command-line application and shared Wikipedia lookup are in `main.py`; the
+desktop interface is in `gui.py`.
 
 - **Imports** bring in Python's built-in tools: `argparse` reads command-line
   arguments, `urllib` makes the web request and encodes its parameters, `json`
@@ -93,6 +106,12 @@ All application code is in `main.py`.
 - **`main(argv=None)`** connects the steps: it reads and validates the term,
   fetches the summary, handles expected errors, and displays the result. The
   optional `argv` parameter also makes the function easier to test.
+- **`gui.py`** provides a window with a search field, Search button, status
+  message, QA logo, and scrollable summary area. It reuses the lookup function
+  from `main.py`.
+- **`lookup_in_background()`** runs the network request on a worker thread.
+  A queue carries results back so Tkinter widgets are only updated on the GUI
+  thread; this keeps the window responsive during the request.
 - **The `if __name__ == "__main__"` block** runs the program when `main.py` is
   launched directly and passes its exit status back to the operating system.
 
@@ -102,11 +121,16 @@ are required.
 
 ## Troubleshooting
 
-### No message box appears
+### No GUI or message box appears
 
-The program falls back to terminal output if Tkinter cannot open a desktop
-dialog. On Linux, install the Tkinter package provided by your distribution
-(often named `python3-tk`) and run the program in a desktop session.
+Tkinter needs a working desktop session. On Linux, install the Tkinter package
+provided by your distribution (often named `python3-tk`) and run the program
+in a desktop session. The command-line version falls back to terminal output
+if it cannot open a message box.
+
+On Windows, the program uses Tcl/Tk resources bundled with the selected Python
+installation when Python does not discover them automatically. If the
+`init.tcl` error persists, repair or reinstall Python with Tcl/Tk included.
 
 ### The lookup fails
 
@@ -129,6 +153,9 @@ spelling or a more specific term.
 - [`urllib.parse` — parsing and encoding URLs](https://docs.python.org/3/library/urllib.parse.html)
 - [`json` — working with JSON data](https://docs.python.org/3/library/json.html)
 - [`tkinter` — Python's interface to Tcl/Tk](https://docs.python.org/3/library/tkinter.html)
+- [Tkinter threading model](https://docs.python.org/3/library/tkinter.html#threading-model)
+- [`threading` — thread-based parallelism](https://docs.python.org/3/library/threading.html)
+- [`queue` — synchronized queues](https://docs.python.org/3/library/queue.html)
 - [Errors and Exceptions](https://docs.python.org/3/tutorial/errors.html)
 
 ### Wikipedia API
@@ -152,7 +179,11 @@ adapting its content.
 
 ```text
 .
-├── main.py       # The command-line search-summary application
+├── main.py       # Command-line application and shared Wikipedia lookup
+├── gui.py        # Desktop graphical interface
+├── assets/       # QA wordmark and window icon used by the GUI
 ├── README.md     # Project overview, usage, and learning references
 └── .gitignore    # Local files Git should not track
 ```
+
+The QA logo assets are sourced from [qa.com](https://www.qa.com/).
